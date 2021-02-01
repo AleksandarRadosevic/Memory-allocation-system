@@ -1,4 +1,3 @@
-
 #include"buddyAlocator.h"
 #include<stdlib.h>
 void initBuddy(void* address, int blocksNum)
@@ -75,22 +74,22 @@ void* allocateBlock(int blockCnt)
 void freeBlock(void *address,int blockCnt)
 {
 	//invalid arguments
-	if (address == 0 || blockCnt == 0 || buddy->_freeBlocks+blockCnt>buddy->_numBlocks) return;
+	if (address == 0 || blockCnt == 0 || buddy->_freeBlocks+blockCnt>buddy->_numBlocks-1) return;
 
 	int i;
 	//no merge needed
-	while (blockCnt > 0) {
-		i = lower_log2(blockCnt);
+	//while (blockCnt > 0) {
+		i = higher_log2(blockCnt);
 
 		Element* temp = (Element*)address;
 		temp->next = buddy->array[i];
 		buddy->array[i] = temp;
 		
-		blockCnt -= pow(2, i);
+	//	blockCnt -= pow(2, i);
 		buddy->_freeBlocks += pow(2, i);
-		address = movePointerForBlocks(address, pow(2,i));
+	//	address = movePointerForBlocks(address, pow(2,i));
 		merge(i);
-	}
+//	}
 }
 
 void printBuddies(Buddy* buddy)
@@ -112,34 +111,40 @@ void* removeAndReturnElem(int i) {
 	return addr;
 }
 
-
+//find correct element if exists then merge else no merge
 void merge(int i) {
 	Element* first = (Element*)buddy->array[i];
 	Element* ptr = first->next;
 	Element* left = NULL;
 	if (ptr == NULL || i>=MAXIMUM_ARRAY_SIZE)
 		return;
-	Element* addr=NULL;
-	Element* leftAddr=NULL;
 	//if same address then merge
 	while (i+1<MAXIMUM_ARRAY_SIZE) {
-		while (ptr != NULL) {
-			if (movePointerForBlocks(first, pow(2, i)) == ptr || movePointerForBlocks(ptr, pow(2, i))==first) {
-				//element can be merged with greater and smaller 
-				if (addr == NULL) {
-					addr = ptr;
-					leftAddr = left;
-				}
-				else
-				{
-					// if addr==3 and ptr==1 and first==2 merge ptr and first 
-					if (addr > ptr) {
-						addr = ptr;
-						leftAddr = left;
-					}
+		//find correct element
+		Element* correctElement=NULL;
+		Element* temp = movePointerForBlocks(buddy->address, 1);
+		Element* last=NULL;
+		for (int j = 0; j < (int)(buddy->_numBlocks-1/(int)pow(2,i)); j++) {
+			if (temp == first)
+			{
+				if (j % 2 == 0) {
+					correctElement = movePointerForBlocks(temp, pow(2, i));
 					break;
 				}
+				else {
+					correctElement = last;
+					break;
+				}
+			}
+			last = temp;
+			temp=movePointerForBlocks(temp, pow(2, i));
+		}
 
+		while (ptr != NULL) {
+			if (ptr==correctElement)
+			{
+				break;
+				//element is found in list
 			}
 			else {
 				left = ptr;
@@ -147,51 +152,27 @@ void merge(int i) {
 			}
 		}
 			//no merge needed 
-			if (addr == NULL)
+			if (ptr == NULL)
 				return;
 
 				//merge first and second element
-				if (leftAddr == NULL) {
-					buddy->array[i] = addr->next;
+				if (left == NULL) {
+					buddy->array[i] = ptr->next;
 				}
 
 				//merge first and nonsecond element in list
 				else {
 					buddy->array[i] = buddy->array[i]->next;
-					leftAddr->next = addr->next;
+					left->next = ptr->next;
 				}
 
 
-			first = first < addr ? first : addr;
-			
+			first = first < ptr ? first : ptr;		
 			first->next =(Element*) buddy->array[i + 1];
 			buddy->array[i + 1] =(Element*) first;
 			ptr = first->next;
-			left = addr = leftAddr = NULL;
+			left =  NULL;
 			i++;
 
 	}
-}
-
-void main() {
-	int* addr = malloc(4096 * 32);
-	initBuddy(addr, 32);
-	printBuddies(buddy);
-	printf("\n\n\n");
-
-	void *addr2=allocateBlock(3);
-	printBuddies(buddy);
-	printf("\n\n\n");
-
-	void* addr4 = movePointerForBlocks(addr2, 3);
-	
-
-	freeBlock(addr2, 3);
-	printBuddies(buddy);
-	printf("\n\n\n");
-
-
-	freeBlock(addr4, 1);
-	printBuddies(buddy);
-	printf("\n\n\n");
 }
