@@ -1,11 +1,12 @@
 #include"buddyAlocator.h"
-#include<stdlib.h>
+ Buddy* buddy;
+ HANDLE mutex;
 void initBuddy(void* address, int blocksNum)
 {
-	//1 is for kernel
+	//1 za kernel
 	if (blocksNum == 1) return;
 
-	//initialize buddy
+	//inicijalizacija
 	buddy =(Buddy*) address;
 	buddy->address = address;
 	buddy->_numBlocks=blocksNum;
@@ -16,7 +17,6 @@ void initBuddy(void* address, int blocksNum)
 		buddy->array[i] = NULL;
 	}
 
-	 
 	blocksNum--;
 	int i;
 	int memFree = movePointerForBlocks(buddy->address, 1);
@@ -31,10 +31,12 @@ void initBuddy(void* address, int blocksNum)
 		memFree = movePointerForBlocks(memFree, pow(2, i));
 		
 	}
+	mutex = Create_mutex();
 }
 
 void* allocateBlock(int blockCnt)
 {
+	
 	if (buddy->_freeBlocks == 0 || buddy->_freeBlocks<blockCnt)
 		return NULL;
 	int i = higher_log2(blockCnt);
@@ -73,11 +75,11 @@ void* allocateBlock(int blockCnt)
 
 void freeBlock(void *address,int blockCnt)
 {
-	//invalid arguments
+	//losi parametri
 	if (address == 0 || blockCnt == 0 || buddy->_freeBlocks+blockCnt>buddy->_numBlocks-1) return;
 
 	int i;
-	//no merge needed
+	
 	//while (blockCnt > 0) {
 		i = higher_log2(blockCnt);
 
@@ -105,22 +107,38 @@ void printBuddies(Buddy* buddy)
 
 
 void* removeAndReturnElem(int i) {
-	//remove first elem and replace first with second if exists
+	//ukloni prvi i zameni ga sa sledecim ako postoji
 	void* addr = buddy->array[i];
 	buddy->array[i] = buddy->array[i]->next;
 	return addr;
 }
 
-//find correct element if exists then merge else no merge
+void* Allocate_Block(int blockCnt)
+{
+	wait(mutex);
+	void* b = allocateBlock(blockCnt);
+	signal(mutex);
+	return b;
+}
+
+void Free_Block(void* address, int blockCnt)
+{
+	wait(mutex);
+	freeBlock(address, blockCnt);
+	signal(mutex);
+	
+}
+
+//nalazenje odgovarajuceg elementa i spajanje ako je potrebno
 void merge(int i) {
 	Element* first = (Element*)buddy->array[i];
 	Element* ptr = first->next;
 	Element* left = NULL;
 	if (ptr == NULL || i>=MAXIMUM_ARRAY_SIZE)
 		return;
-	//if same address then merge
+	
 	while (i+1<MAXIMUM_ARRAY_SIZE) {
-		//find correct element
+		//nalazanje korektnog elementa
 		Element* correctElement=NULL;
 		Element* temp = movePointerForBlocks(buddy->address, 1);
 		Element* last=NULL;
@@ -144,28 +162,29 @@ void merge(int i) {
 			if (ptr==correctElement)
 			{
 				break;
-				//element is found in list
+				//pronadjen element
 			}
 			else {
 				left = ptr;
 				ptr = ptr->next;
 			}
 		}
-			//no merge needed 
+			//ne treba spajanje
 			if (ptr == NULL)
 				return;
 
-				//merge first and second element
+				//spoj prvi i drugi
 				if (left == NULL) {
 					buddy->array[i] = ptr->next;
 				}
 
-				//merge first and nonsecond element in list
+				//spoj prvi i element koji nije drugi
 				else {
 					buddy->array[i] = buddy->array[i]->next;
 					left->next = ptr->next;
 				}
 
+			//propagiranje u sledeci nivo ukoliko 
 
 			first = first < ptr ? first : ptr;		
 			first->next =(Element*) buddy->array[i + 1];
@@ -176,3 +195,94 @@ void merge(int i) {
 
 	}
 }
+
+
+//void main() {
+//	int* addr = malloc(4096 *1000);
+//	initBuddy(addr,1000);
+//	printBuddies(buddy);
+//	printf("\n\n\n");
+//
+//	void* adr[1000];
+//	for (int i = 0; i < 100; i++) {
+//		if (i % 3 == 0)
+//		{
+//			adr[i] = Allocate_Block(1);
+//		}
+//		if (i % 3 == 1) {
+//			adr[i] = Allocate_Block(2);
+//		}
+//		if (i % 3 == 2) {
+//			adr[i] = Allocate_Block(8);
+//		}
+//	
+//	}
+//
+//	for (int i = 0; i < 100; i++) {
+//		Free_Block(adr[i], 1);
+//
+//	}
+//
+//	for (int i = 0; i < 100; i++) {
+//		if (i % 3 != 0) {
+//			adr[i] = movePointerForBlocks(adr[i], 1);
+//			Free_Block(adr[i], 1);
+//
+//		}
+//
+//	}
+//	for (int i = 0; i < 100; i++) {
+//		if (i % 3 == 2) {
+//			adr[i] = movePointerForBlocks(adr[i], 1);
+//			Free_Block(adr[i], 1);
+//
+//		}
+//
+//	}
+//	for (int i = 0; i < 100; i++) {
+//		if (i % 3 == 2) {
+//			adr[i] = movePointerForBlocks(adr[i], 1);
+//			Free_Block(adr[i], 1);
+//
+//		}
+//
+//	}
+//
+//	for (int i = 0; i < 100; i++) {
+//		if (i % 3 == 2) {
+//			adr[i] = movePointerForBlocks(adr[i], 1);
+//			Free_Block(adr[i], 1);
+//
+//		}
+//
+//	}
+//	for (int i = 0; i < 100; i++) {
+//		if (i % 3 == 2) {
+//			adr[i] = movePointerForBlocks(adr[i], 1);
+//			Free_Block(adr[i], 1);
+//
+//		}
+//
+//	}
+//
+//	for (int i = 0; i < 100; i++) {
+//		if (i % 3 == 2) {
+//			adr[i] = movePointerForBlocks(adr[i], 1);
+//			Free_Block(adr[i], 1);
+//
+//		}
+//
+//	}
+//	for (int i = 0; i < 100; i++) {
+//		if (i % 3 == 2) {
+//			adr[i] = movePointerForBlocks(adr[i], 1);
+//			Free_Block(adr[i], 1);
+//
+//		}
+//
+//	}
+//
+//	printBuddies(buddy);
+//	printf("\n\n\n");
+//
+//	}

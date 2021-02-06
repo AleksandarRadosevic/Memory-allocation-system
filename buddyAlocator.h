@@ -13,7 +13,6 @@ typedef struct Buddy {
 	struct Element *array[MAXIMUM_ARRAY_SIZE];
 	
 }Buddy;
-static Buddy* buddy;
 
 void initBuddy(void *address,int blocksNum);
 void* allocateBlock(int blockCnt);
@@ -21,3 +20,6 @@ void freeBlock(void *address,int blockCnt);
 void printBuddies(Buddy* b);
 void merge(int i);
 void* removeAndReturnElem(int);
+
+void* Allocate_Block(int blockCnt);
+void Free_Block(void* address, int blockCnt);
